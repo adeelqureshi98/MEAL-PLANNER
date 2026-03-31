@@ -1,0 +1,16 @@
+{
+  "name": "AI Meal Planner - Developed by Adeel Qureshi",
+  "short_name": "AI Meal Planner",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#CFB53B",
+  "description": "Premium Urdu Recipe AI System by Adeel Qureshi.",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
