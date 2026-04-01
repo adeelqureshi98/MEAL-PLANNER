@@ -696,72 +696,85 @@ function updateGroceryTotal() {
         display.innerText = total > 0 ? `Rs. ${total.toLocaleString()}` : "Rs. 0";
     }
 }
+let speechRecognition = null;
+
+function stopVoiceSearch() {
+    if (speechRecognition) {
+        speechRecognition.stop();
+        speechRecognition = null;
+    }
+    document.getElementById('voice-overlay').classList.remove('active');
+}
+
 function startVoiceSearch() {
-    const status = document.getElementById('voice-status');
+    const overlay = document.getElementById('voice-overlay');
+    const interimText = document.getElementById('voice-interim');
     const searchInput = document.getElementById('searchInput');
-    const micBtn = document.querySelector('.btn-icon[onclick*="startVoiceSearch"]');
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         alert("آپ کا براؤزر آواز سے تلاش کرنے کی سہولت فراہم نہیں کرتا۔ برائے مہربانی کروم (Chrome) استعمال کریں۔");
         return;
     }
 
-    // Check if HTTPS is used (except for localhost)
     if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         alert("صوتی تلاش کے لیے محفوظ کنکشن (HTTPS) ضروری ہے۔");
         return;
     }
 
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new Recognition();
+    speechRecognition = new Recognition();
 
-    // Set primary language, with fallbacks handled for mobile
-    recognition.lang = 'ur-PK';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    speechRecognition.lang = 'ur-PK';
+    speechRecognition.interimResults = true; // Show results in real-time
+    speechRecognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-        status.style.display = 'block';
-        status.innerHTML = 'سن رہا ہوں... <span class="pulse">🎤</span>';
-        if(micBtn) micBtn.classList.add('mic-active');
-        console.log("Recognition started...");
+    speechRecognition.onstart = () => {
+        overlay.classList.add('active');
+        interimText.innerText = 'بولئے...';
+        overlay.onclick = (e) => {
+            if (e.target === overlay) stopVoiceSearch();
+        };
+        console.log("Mobile Recognition Started...");
     };
 
-    recognition.onerror = (event) => {
-        let msg = "آواز پہچاننے میں مسئلہ ہوا۔ دوبارہ کوشش کریں۔";
-        if (event.error === 'not-allowed') msg = "مائیکروفون کے استعمال کی اجازت نہیں ملی۔ سیٹنگز چیک کریں۔";
-        if (event.error === 'no-speech') msg = "کوئی آواز نہیں سنی گئی، دوبارہ بولیں۔";
-        if (event.error === 'network') msg = "انٹرنیٹ کنکشن کا مسئلہ ہے۔";
+    speechRecognition.onerror = (event) => {
+        let msg = "آواز پہچاننے میں مسئلہ ہوا۔";
+        if (event.error === 'not-allowed') msg = "بھائی، فون کی سیٹنگز میں براؤزر کے لیے مائیکروفون آن کریں۔";
+        if (event.error === 'no-speech') msg = "کچھ سنائی نہیں دیا، دوبارہ بولیں۔";
+        if (event.error === 'network') msg = "انٹرنیٹ کا مسئلہ ہے۔";
         
-        status.innerText = msg;
-        console.error("Speech Error:", event.error);
-        if(micBtn) micBtn.classList.remove('mic-active');
-        setTimeout(() => status.style.display = 'none', 3000);
+        interimText.innerText = msg;
+        setTimeout(stopVoiceSearch, 3000);
     };
 
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        searchInput.value = transcript;
-        status.innerHTML = `تلاش ہو رہا ہے: <b>${transcript}</b>`;
-        filterDishes();
-        if(micBtn) micBtn.classList.remove('mic-active');
-        setTimeout(() => {
-            status.style.display = 'none';
-            // Scroll to results
-            document.getElementById('app-grid').scrollIntoView({ behavior: 'smooth' });
-        }, 1500);
+    speechRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                const final = event.results[i][0].transcript;
+                searchInput.value = final;
+                interimText.innerHTML = `<b>تلاش: ${final}</b>`;
+                filterDishes();
+                setTimeout(() => {
+                    stopVoiceSearch();
+                    document.getElementById('app-grid').scrollIntoView({ behavior: 'smooth' });
+                }, 1000);
+            } else {
+                interim += event.results[i][0].transcript;
+                interimText.innerText = interim;
+            }
+        }
     };
 
-    recognition.onend = () => {
-        if(micBtn) micBtn.classList.remove('mic-active');
-        console.log("Recognition ended.");
+    speechRecognition.onend = () => {
+        console.log("Mobile Recognition Ended.");
     };
 
     try {
-        recognition.start();
+        speechRecognition.start();
     } catch(e) {
         console.error("Start Error:", e);
-        status.innerText = "سسٹم مائیک میں مسئلہ ہے، ریفریش کریں۔";
+        stopVoiceSearch();
     }
 }
 function showFastMeals() {
