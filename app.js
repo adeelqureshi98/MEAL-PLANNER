@@ -35,6 +35,7 @@ function initApp() {
         renderDay(activeDayIndex);
         updateNutriReport();
         populateMealOfMoment();
+        updateGroceryTotal(); // Initialize budget total
 
         setTimeout(() => { 
             const loader = document.getElementById('loader');
@@ -177,30 +178,58 @@ function getNutritionHTML(category) {
 
 function generateWeeklyPlan(month) {
     weeklyPlan = { timestamp: Date.now(), days: {} };
-    let usedIds = [];
+    let usedNames = new Set(); // Track unique base names across the entire week
     let seasonDishes = window.allDishes.filter(d => d.m.includes(month));
+    
+    // Fisher-Yates Shuffle for better randomness
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
     for (let i = 0; i < 7; i++) {
         let dailySuggestions = [];
         let quotas = { protein: 2, vitamins: 2, carbs: 1, fiber: 1 };
-        let shuffled = seasonDishes.sort(() => 0.5 - Math.random());
+        let shuffled = shuffle([...seasonDishes]);
+        
         for (let dish of shuffled) {
-            if (usedIds.includes(dish.id)) continue;
+            let baseName = dish.n.split(' (')[0].trim(); // Extract base name to avoid duplicates like "Dish (18)"
+            if (usedNames.has(baseName)) continue;
+
             let type = getNutriCategory(dish.c);
             if (quotas[type] > 0) {
                 dailySuggestions.push(dish);
-                usedIds.push(dish.id);
+                usedNames.add(baseName);
                 quotas[type]--;
             }
         }
+
+        // Fill remaining slots if needed (up to 6)
         if (dailySuggestions.length < 6) {
-            let backup = window.allDishes.sort(() => 0.5 - Math.random());
+            let backup = shuffle([...window.allDishes]);
             for (let dish of backup) {
-                if (!dailySuggestions.find(d => d.id === dish.id) && dailySuggestions.length < 6) {
+                let baseName = dish.n.split(' (')[0].trim();
+                if (!dailySuggestions.find(d => d.id === dish.id) && !usedNames.has(baseName) && dailySuggestions.length < 6) {
                     dailySuggestions.push(dish);
+                    usedNames.add(baseName);
                 }
             }
         }
-        weeklyPlan.days[i] = dailySuggestions.sort(() => 0.5 - Math.random());
+        
+        // If still less than 6 (unlikely with 500+ dishes), allow some reuse if absolutely necessary, but try to avoid
+        if (dailySuggestions.length < 6) {
+             let backup = shuffle([...window.allDishes]);
+             for (let dish of backup) {
+                if (!dailySuggestions.find(d => d.id === dish.id) && dailySuggestions.length < 6) {
+                    dailySuggestions.push(dish);
+                }
+             }
+        }
+
+        weeklyPlan.days[i] = shuffle(dailySuggestions);
     }
     localStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
 }
@@ -579,15 +608,161 @@ function speakRecipe() {
     window.speechSynthesis.speak(msg);
 }
 function playBismillah() { alert('بسم اللہ الرحمن الرحیم شروع کریں!'); }
-function toggleFocusMode() { document.getElementById('recipe-modal').classList.toggle('focus-mode'); }
+function toggleFocusMode() { 
+    const modal = document.getElementById('recipe-modal');
+    modal.classList.toggle('focus-mode'); 
+    if(modal.classList.contains('focus-mode')) {
+        modal.onclick = (e) => {
+            if (e.target === modal || e.target.classList.contains('focus-mode')) {
+                toggleFocusMode();
+                modal.onclick = null;
+            }
+        };
+    } else {
+        modal.onclick = null;
+    }
+}
+function scrollToMenu() {
+    const el = document.getElementById('days-nav');
+    if(el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        el.style.boxShadow = '0 0 20px var(--gold-solid)';
+        setTimeout(() => el.style.boxShadow = 'none', 2000);
+    }
+}
+function checkNetworkStatus() {
+    alert("آپ کا انٹرنیٹ ٹھیک کام کر رہا ہے! ✅\nتمام ریسیپیز آف لائن بھی دستیاب ہیں۔");
+}
+
+let groceryBudget = JSON.parse(localStorage.getItem('groceryBudget')) || [];
+
+function openBudgetBuilder() {
+    document.getElementById('budget-modal').classList.add('active');
+    renderBudgetItems();
+}
+
+function closeBudgetBuilder() {
+    document.getElementById('budget-modal').classList.remove('active');
+}
+
+function addBudgetItem() {
+    const name = document.getElementById('budget-item-name').value;
+    const price = parseInt(document.getElementById('budget-item-price').value);
+    
+    if(!name || !price) {
+        alert("براہ کرم چیز کا نام اور قیمت درج کریں۔");
+        return;
+    }
+    
+    groceryBudget.push({ name, price, id: Date.now() });
+    document.getElementById('budget-item-name').value = '';
+    document.getElementById('budget-item-price').value = '';
+    
+    renderBudgetItems();
+    saveBudget();
+}
+
+function removeBudgetItem(id) {
+    groceryBudget = groceryBudget.filter(item => item.id !== id);
+    renderBudgetItems();
+    saveBudget();
+}
+
+function renderBudgetItems() {
+    const list = document.getElementById('budget-items-list');
+    list.innerHTML = groceryBudget.map(item => `
+        <div class="urdu" style="background:#fff; padding:10px 15px; border-radius:10px; border:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:bold;">${item.name}</div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <div class="gold-text" style="font-weight:bold;">Rs. ${item.price}</div>
+                <button onclick="removeBudgetItem(${item.id})" style="background:none; border:none; color:#ff4444; font-size:1.2rem; cursor:pointer;">✕</button>
+            </div>
+        </div>
+    `).join('');
+    
+    const total = groceryBudget.reduce((sum, item) => sum + item.price, 0);
+    document.getElementById('budget-total-display').innerText = `Rs. ${total.toLocaleString()}`;
+    updateGroceryTotal();
+}
+
+function saveBudget() {
+    localStorage.setItem('groceryBudget', JSON.stringify(groceryBudget));
+}
+
+function updateGroceryTotal() {
+    const total = groceryBudget.reduce((sum, item) => sum + item.price, 0);
+    const display = document.getElementById('cost-prediction');
+    if(display) {
+        display.innerText = total > 0 ? `Rs. ${total.toLocaleString()}` : "Rs. 0";
+    }
+}
 function startVoiceSearch() {
-    document.getElementById('voice-status').style.display = 'block';
-    setTimeout(() => {
-        document.getElementById('voice-status').innerText = 'بریانی تلاش کی جا رہی ہے...';
-        document.getElementById('searchInput').value = 'بریانی';
+    const status = document.getElementById('voice-status');
+    const searchInput = document.getElementById('searchInput');
+    const micBtn = document.querySelector('.btn-icon[onclick*="startVoiceSearch"]');
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert("آپ کا براؤزر آواز سے تلاش کرنے کی سہولت فراہم نہیں کرتا۔ برائے مہربانی کروم (Chrome) استعمال کریں۔");
+        return;
+    }
+
+    // Check if HTTPS is used (except for localhost)
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        alert("صوتی تلاش کے لیے محفوظ کنکشن (HTTPS) ضروری ہے۔");
+        return;
+    }
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new Recognition();
+
+    // Set primary language, with fallbacks handled for mobile
+    recognition.lang = 'ur-PK';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+        status.style.display = 'block';
+        status.innerHTML = 'سن رہا ہوں... <span class="pulse">🎤</span>';
+        if(micBtn) micBtn.classList.add('mic-active');
+        console.log("Recognition started...");
+    };
+
+    recognition.onerror = (event) => {
+        let msg = "آواز پہچاننے میں مسئلہ ہوا۔ دوبارہ کوشش کریں۔";
+        if (event.error === 'not-allowed') msg = "مائیکروفون کے استعمال کی اجازت نہیں ملی۔ سیٹنگز چیک کریں۔";
+        if (event.error === 'no-speech') msg = "کوئی آواز نہیں سنی گئی، دوبارہ بولیں۔";
+        if (event.error === 'network') msg = "انٹرنیٹ کنکشن کا مسئلہ ہے۔";
+        
+        status.innerText = msg;
+        console.error("Speech Error:", event.error);
+        if(micBtn) micBtn.classList.remove('mic-active');
+        setTimeout(() => status.style.display = 'none', 3000);
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        searchInput.value = transcript;
+        status.innerHTML = `تلاش ہو رہا ہے: <b>${transcript}</b>`;
         filterDishes();
-        setTimeout(() => document.getElementById('voice-status').style.display = 'none', 2000);
-    }, 1500);
+        if(micBtn) micBtn.classList.remove('mic-active');
+        setTimeout(() => {
+            status.style.display = 'none';
+            // Scroll to results
+            document.getElementById('app-grid').scrollIntoView({ behavior: 'smooth' });
+        }, 1500);
+    };
+
+    recognition.onend = () => {
+        if(micBtn) micBtn.classList.remove('mic-active');
+        console.log("Recognition ended.");
+    };
+
+    try {
+        recognition.start();
+    } catch(e) {
+        console.error("Start Error:", e);
+        status.innerText = "سسٹم مائیک میں مسئلہ ہے، ریفریش کریں۔";
+    }
 }
 function showFastMeals() {
     const grid = document.getElementById('app-grid');

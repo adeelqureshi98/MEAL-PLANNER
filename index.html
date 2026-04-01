@@ -24,7 +24,7 @@
                 <button class="theme-toggle urdu" style="position: static;" onclick="toggleTheme()">🎨 تھیم</button>
             </div>
             <h1 class="logo gold-text" style="font-family: 'Outfit', sans-serif;">AI Meal Planner</h1>
-            <p class="subtitle urdu" style="font-size: 1.1rem; margin-bottom: 2px;">پریمیم ہفتہ وار مینو</p>
+            <p class="subtitle urdu" style="font-size: 1.1rem; margin-bottom: 2px; cursor:pointer;" onclick="scrollToMenu()">پریمیم ہفتہ وار مینو 📅</p>
             <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px;">
                 <p style="font-size: 0.8rem; color: var(--gold-solid); font-weight:600; margin:0;">Developed by Adeel Qureshi</p>
                 <button class="btn-icon" style="font-size:1.2rem; background:var(--gold-light); border-radius:50%; width:40px; height:40px; border:1px solid var(--gold-solid); line-height:1;" onclick="startVoiceSearch()">🎤</button>
@@ -47,8 +47,8 @@
             </div>
 
             <div class="badge-container">
-                <div id="season-badge" class="badge urdu gold-border">موسم چیک ہو رہا ہے...</div>
-                <div id="network-status" class="badge urdu" style="background:var(--card-white); color:var(--text-secondary); border:var(--border-subtle);">آن لائن...</div>
+                <div id="season-badge" class="badge urdu gold-border" style="cursor:pointer;" onclick="scrollToMenu()">اسپیشل ہفتہ وار مینو</div>
+                <div id="network-status" class="badge urdu" style="background:var(--card-white); color:var(--text-secondary); border:var(--border-subtle); cursor:pointer;" onclick="checkNetworkStatus()">آن لائن...</div>
             </div>
             
             <!-- Water Tracker -->
@@ -64,7 +64,8 @@
             </div>
             <div class="urdu" style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px; font-weight:bold;">پانی کا ہدف (8 گلاس)</div>
 
-            <button class="btn-primary urdu" style="width:100%; margin-top:15px; font-size:1.3rem; padding:1.2rem; background:var(--gold-metallic);" onclick="openDirectory()">📚 تمام 500+ ریسیپیز دیکھیں</button>
+            <button class="btn-primary urdu" style="width:100%; margin-top:15px; font-size:1.3rem; padding:1.2rem; background:var(--gold-metallic);" onclick="scrollToMenu()">📅 ہفتہ وار مینو (7 دن)</button>
+            <button class="btn-secondary urdu" style="width:100%; margin-top:10px; font-size:1.1rem; padding:1rem;" onclick="openDirectory()">📚 تمام 500+ ریسیپیز دیکھیں</button>
 
             <!-- NEW: AI MEAL OF THE MOMENT -->
             <div id="meal-of-moment" class="card" style="margin-top:20px; padding:1.2rem; background: linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)), url('cooking_bg.png'); border:2px solid var(--gold-solid); animation: shadowPulse 3s infinite; cursor:pointer; width:100%;" onclick="openRandomRecipe()">
@@ -214,10 +215,10 @@
 
                 <!-- 3. Grocery Cost Predictor & MasterChef Badge -->
                 <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:10px; margin-bottom:20px;">
-                    <div class="card" style="padding:1rem;">
+                    <div class="card" style="padding:1rem; cursor:pointer;" onclick="openBudgetBuilder()">
                         <div class="urdu" style="font-weight:bold; font-size:0.9rem;">ہفتہ وار راشن بجٹ 💰</div>
                         <div id="cost-prediction" class="urdu gold-text" style="font-size:1.4rem; font-weight:bold;">Rs. 8,500</div>
-                        <div class="urdu" style="font-size:0.6rem; color:var(--text-secondary);">(اس میں تیل، مصالحے اور گروسری شامل ہے)</div>
+                        <div class="urdu" style="font-size:0.6rem; color:var(--text-secondary);">(اس پر کلک کر کے اپنا بجٹ خود بنائیں)</div>
                     </div>
                     <div class="card" style="padding:1rem; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center;">
                         <div style="font-size:2.5rem;" class="trophy-anim">🏆</div>
@@ -553,5 +554,45 @@
     </div>
     <script src="data.js"></script>
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(() => {
+                    console.log('Service Worker Registered');
+                });
+            });
+        }
+    </script>
+    <!-- BUDGET BUILDER MODAL -->
+    <div id="budget-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-btn" onclick="closeBudgetBuilder()">&times;</span>
+                <h2 class="urdu gold-text modal-title">راشن بجٹ میکر 💰</h2>
+            </div>
+            <div class="recipe-body urdu">
+                <div style="background:var(--gold-light); padding:15px; border-radius:12px; margin-bottom:15px; border:1px dashed var(--gold-solid);">
+                    <div style="font-weight:bold; margin-bottom:5px;">بجٹ کیلکولیٹر (ہفتہ وار/ماہانہ)</div>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <input type="text" id="budget-item-name" class="search-bar" placeholder="چیز کا نام (جیسے: آٹا)" style="margin:0; padding:10px;">
+                        <input type="number" id="budget-item-price" class="search-bar" placeholder="قیمت" style="margin:0; width:100px; text-align:center;">
+                        <button class="btn-primary urdu" style="width:auto; padding:0 20px;" onclick="addBudgetItem()">Add</button>
+                    </div>
+                </div>
+                
+                <div id="budget-items-list" style="display:flex; flex-direction:column; gap:8px;">
+                    <!-- Items injected here -->
+                </div>
+
+                <div style="margin-top:20px; padding:15px; background:var(--bg-white); border-top:2px solid var(--gold-solid); text-align:center;">
+                    <div style="font-size:0.9rem; color:var(--text-secondary);">کل راشن بجٹ (Total):</div>
+                    <div id="budget-total-display" style="font-size:2rem; font-weight:bold; color:var(--text-primary);">Rs. 0</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary urdu" style="width:100%;" onclick="closeBudgetBuilder()">محفوظ کریں اور بند کریں</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
