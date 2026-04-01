@@ -463,3 +463,114 @@ button {
     100% { transform: scale(1); filter: drop-shadow(0 0 0 gold); }
 }
 .radio-active { animation: radioPulse 2s infinite; color: var(--gold-solid) !important; }
+
+/* --- PREMIUM INVITATION CARD --- */
+.premium-invitation-card {
+    background: #fffdf5;
+    border: 15px solid transparent;
+    border-image: var(--gold-metallic) 1;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+    max-width: 450px;
+    margin: 0 auto;
+    color: #333;
+}
+.premium-invitation-card::before {
+    content: "﷽";
+    display: block;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--gold-solid);
+}
+.dawat-title {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: var(--gold-solid);
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--gold-light);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+.dawat-menu-box {
+    background: rgba(207, 181, 59, 0.05);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    border: 1px dashed var(--gold-solid);
+}
+
+/* --- DIRECTORY LIST --- */
+.directory-item {
+    background: var(--card-white);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.3s;
+}
+.directory-item:hover {
+    background: var(--gold-light);
+    transform: translateX(-5px);
+}
+.directory-item .btn-primary {
+    padding: 5px 15px;
+    font-size: 0.9rem;
+    width: auto;
+}
+
+@keyframes shadowPulse {
+    0% { box-shadow: 0 0 5px rgba(207, 181, 59, 0.2); }
+    50% { box-shadow: 0 0 25px rgba(207, 181, 59, 0.6); }
+    100% { box-shadow: 0 0 5px rgba(207, 181, 59, 0.2); }
+}
+
+/* --- VOICE SEARCH ANIMATIONS --- */
+@keyframes voicePulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.pulse {
+    display: inline-block;
+    animation: voicePulse 1s infinite;
+    margin-left: 5px;
+    font-size: 1.2rem;
+}
+.mic-active {
+    background: #d9534f !important;
+    color: white !important;
+    box-shadow: 0 0 20px rgba(217, 83, 79, 0.6) !important;
+    border: none !important;
+}
+
+/* --- RECIPE DETAIL STYLING --- */
+.recipe-section ul li {
+    font-size: 1.2rem;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--gold-light);
+}
+.recipe-section ul li:last-child {
+    border-bottom: none;
+}
+.recipe-section ol li {
+    font-size: 1.2rem;
+    padding: 5px 0;
+    color: var(--text-primary);
+}
+.recipe-section ol li::marker {
+    color: var(--gold-solid);
+    font-weight: bold;
+    font-size: 1.3rem;
+}
+
+/* --- DASHBOARD ENHANCEMENTS --- */
+.dawat-result p {
+    font-size: 1.1rem;
+    border-right: 3px solid var(--gold-solid);
+    padding-right: 10px;
+    margin: 10px 0;
+}
