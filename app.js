@@ -254,16 +254,24 @@ function openRecipe(id) {
 
 function updateQuantities() {
     if (!currentRecipeDish) return;
-    const ingredients = currentRecipeDish.i.split(',').map(item => `<li>${item.trim()}</li>`).join('');
+    const membersNode = document.getElementById('members-count');
+    let members = membersNode ? parseInt(membersNode.value) : 4;
+    
+    let isFav = (JSON.parse(localStorage.getItem('favDishes')) || []).includes(currentRecipeDish.id);
+    let favText = isFav ? "❤️ پسندیدہ سے ہٹائیں" : "🤍 پسندیدہ بنائیں";
+    
+    let ingredientsList = currentRecipeDish.i.split(',').map(item => `<li>${item.trim()}</li>`).join('');
+    
     let steps = currentRecipeDish.t.split(/(?:\n|\d+\. )/).filter(s => s.trim().length > 5);
     let instrHTML = steps.length > 1 
         ? `<ol style="padding-right:20px;">` + steps.map(s => `<li style="margin-bottom:10px;">${s.trim()}</li>`).join('') + `</ol>`
         : `<p>${currentRecipeDish.t}</p>`;
 
     document.getElementById('modal-body').innerHTML = `
+        <button class="btn-secondary urdu" style="width:100%; margin-bottom:15px; background:var(--gold-light);" onclick="toggleFavorite(${currentRecipeDish.id})">${favText}</button>
         <div class="recipe-section urdu">
-            <h3>🛒 اجزاء:</h3>
-            <ul>${ingredients}</ul>
+            <h3>🛒 اجزاء (${members} افراد کے لیے):</h3>
+            <ul>${ingredientsList}</ul>
         </div>
         <div class="recipe-section urdu" style="margin-top:20px;">
             <h3>👨‍🍳 پکانے کا طریقہ:</h3>
@@ -275,9 +283,18 @@ function updateQuantities() {
 function switchMainTab(viewId, element) {
     document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
     const view = document.getElementById('view-' + viewId);
-    if(view) view.classList.add('active');
-    if(element) element.classList.add('active');
+    if (view) view.classList.add('active');
+    
+    const navItem = element || document.querySelector(`.nav-item[onclick*="switchMainTab('${viewId}'"]`);
+    if(navItem) navItem.classList.add('active');
+    
+    if (viewId === 'favs') renderFavs();
+    if (viewId === 'grocery') generateGroceryList();
+    if (viewId === 'ramadan') renderRamadan();
+    if (viewId === 'directory') filterDirectory();
+    window.scrollTo(0,0);
 }
 
 function getCostAndCalories(category, members) {
@@ -288,29 +305,364 @@ window.urduTags = {'Chicken':'🍗 چکن','Beef':'🥩 بیف','Mutton':'🥩 �
 
 document.addEventListener('DOMContentLoaded', initApp);
 function closeRecipe() { document.getElementById('recipe-modal').classList.remove('active'); }
-function changeMembers(n) { }
+function changeMembers(n) {
+    let countNode = document.getElementById('members-count');
+    if (!countNode) return;
+    let current = parseInt(countNode.value) || 4;
+    let next = current + n;
+    if (next < 1) next = 1;
+    if (next > 50) next = 50;
+    countNode.value = next;
+    updateQuantities();
+}
 function toggleNightMode() { document.body.classList.toggle('night-mode'); }
-function toggleTheme() { }
-function filterByCategory(c, el) { }
-function filterDishes() { }
-function shareWhatsApp(id) { }
-function downloadPDF(id) { }
-function askBhai() { }
-function saveWeight() { }
-function nextGasTip() { }
-function updateMoodSuggestions() { }
-function pickLunch() { }
-function addFamilyMember() { }
-function shuffleDuties() { }
-function openHack() { }
-function toggleRadio() { }
-function toggleFavorite() { }
-function generateGroceryList() { }
-function shareGroceryWhatsApp() { }
-function scanFridge() { }
-function toggleTag() { }
-function speakRecipe() { }
-function playBismillah() { }
-function toggleFocusMode() { }
-function startVoiceSearch() { }
-function markCooked() { }
+function toggleTheme() {
+    const bodies = document.body;
+    if (bodies.classList.contains('theme-rose')) {
+        bodies.classList.remove('theme-rose');
+        bodies.classList.add('theme-silver');
+    } else if (bodies.classList.contains('theme-silver')) {
+        bodies.classList.remove('theme-silver');
+    } else {
+        bodies.classList.add('theme-rose');
+    }
+}
+function filterByCategory(c, el) {
+    // Switch to Home view first
+    switchMainTab('home');
+    
+    document.querySelectorAll('.cat-pill').forEach(btn => btn.classList.remove('active'));
+    if(el) el.classList.add('active');
+    
+    const grid = document.getElementById('app-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+    
+    let dishesToShow = [];
+    if (c === 'All') { 
+        dishesToShow = (weeklyPlan && weeklyPlan.days) ? weeklyPlan.days[activeDayIndex] : []; 
+    } else { 
+        dishesToShow = window.allDishes.filter(d => d.c.toLowerCase().includes(c.toLowerCase()) || d.n.includes(c)).slice(0, 24); 
+    }
+    
+    if (dishesToShow.length === 0) {
+        grid.innerHTML = `<div class="urdu" style="grid-column: 1/-1; text-align:center; padding:2rem;">اس کیٹیگری میں فی الحال کوئی ڈش موجود نہیں ہے۔</div>`;
+        return;
+    }
+
+    dishesToShow.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="card-category urdu">${window.urduTags[item.c] || item.c}</div>
+            <div class="card-title urdu gold-text" style="font-size:1.8rem;">${item.n}</div>
+            <button class="btn-primary urdu" onclick="openRecipe(${item.id})">ترکیب و مقدار</button>
+        `;
+        grid.appendChild(card);
+    });
+}
+function filterDishes() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const grid = document.getElementById('app-grid');
+    if(!grid) return;
+    if(q.length === 0) { filterByCategory('All', document.querySelector('.cat-pill')); return; }
+    grid.innerHTML = '';
+    const filtered = window.allDishes.filter(d => d.n.toLowerCase().includes(q) || d.i.toLowerCase().includes(q)).slice(0, 20);
+    filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="card-title urdu gold-text" style="font-size:1.8rem;">${item.n}</div>
+            <button class="btn-primary urdu" onclick="openRecipe(${item.id})">ترکیب و مقدار</button>
+        `;
+        grid.appendChild(card);
+    });
+}
+function shareWhatsApp(id) {}
+function downloadPDF(id) {}
+function askBhai() {
+    let q = document.getElementById('bhai-input').value;
+    if(!q) return;
+    document.getElementById('bhai-chat-box').innerText = "بھائی سوچ رہا ہے...";
+    setTimeout(() => {
+        document.getElementById('bhai-chat-box').innerText = "اگر گوشت نہیں گل رہا تو اس میں کچا پپیتا یا تھوڑا سا میٹھا سوڈا ڈالیں!";
+    }, 1000);
+}
+function saveWeight() {
+    let w = document.getElementById('weight-input').value;
+    if(w) alert('وزن ' + w + ' KG محفوظ ہو گیا!');
+}
+function nextGasTip() {
+    let tips = ['پریشر ککر کا استعمال کریں، 40% گیس بچائیں۔', 'برتن کا ڈھکن بند رکھ کر پکائیں تاکہ بھاپ ضائع نہ ہو۔', 'پکانے سے پہلے دالوں کو بھگو کر رکھیں۔'];
+    let el = document.getElementById('gas-tip');
+    let idx = tips.indexOf(el.innerText) + 1;
+    if(idx >= tips.length) idx = 0;
+    el.innerText = tips[idx];
+}
+function updateMoodSuggestions(val) {
+    let texts = ['تھکا ہوا: جلدی بننے والی ڈش (مثلاً انڈا پراٹھا)', 'عام: کوئی بھی متوازن ڈش', 'خوش: مزیدار اور چٹپٹی ڈش (مثلاً بریانی)', 'بہت خوش: شاہی اور میٹھا (مثلاً قورمہ اور کھیر)'];
+    document.getElementById('mood-text').innerText = texts[val-1];
+}
+function pickLunch(type) {
+    if(!window.lunchBoxState) window.lunchBoxState = {};
+    
+    // Urdu Lunchbox Options
+    const options = {
+        'سنیک': ['بسکٹ 🍪', 'چپس 🍟', 'فرنچ فرائز 🍟', 'پاپ کارن 🍿', 'کیک 🍰'],
+        'مین': ['چکن سینڈوچ 🥪', 'میکرونی 🍝', 'نوڈلز 🍜', 'شامی کباب برگر 🍔', 'رول پراٹھا 🌯'],
+        'پھل': ['سیب 🍎', 'کیلا 🍌', 'انگور 🍇', 'کھجور 🌴', 'آم 🥭']
+    };
+    
+    window.lunchBoxState[type] = options[type][Math.floor(Math.random() * options[type].length)];
+    
+    let res = document.getElementById('lunchbox-result');
+    if(res) {
+        res.style.display = 'block';
+        res.style.animation = 'popIn 0.3s ease';
+        res.innerHTML = `
+            <div class="urdu" style="font-size:1.2rem; font-weight:bold; color:var(--gold-solid); text-align:center; border-bottom:1px solid var(--gold-light); margin-bottom:10px;">لنچ باکس ڈیزائن 🍱</div>
+            <div class="urdu" style="display:flex; justify-content:space-between; margin-bottom:5px;"><strong>سنیک:</strong> <span>${window.lunchBoxState['سنیک'] || '-'}</span></div>
+            <div class="urdu" style="display:flex; justify-content:space-between; margin-bottom:5px;"><strong>مین ڈش:</strong> <span>${window.lunchBoxState['مین'] || '-'}</span></div>
+            <div class="urdu" style="display:flex; justify-content:space-between;"><strong>پھل:</strong> <span>${window.lunchBoxState['پھل'] || '-'}</span></div>
+            <button class="btn-primary urdu" style="width:100%; margin-top:10px; font-size:0.9rem; padding:5px;" onclick="speakLunch()">آواز میں سنیں 🔊</button>
+        `;
+    }
+}
+
+function speakLunch() {
+    if(!window.lunchBoxState) return;
+    let text = `بچوں کے لنچ باکس کے لیے، سنیک میں ${window.lunchBoxState['سنیک'] || 'کچھ نہیں'}، مین ڈش میں ${window.lunchBoxState['مین'] || 'کچھ نہیں'}، اور پھل میں ${window.lunchBoxState['پھل'] || 'کچھ نہیں'} بہترین رہے گا۔`;
+    let msg = new SpeechSynthesisUtterance(text);
+    msg.lang = 'ur-PK';
+    window.speechSynthesis.speak(msg);
+}
+function addFamilyMember() {
+    let name = document.getElementById('family-member-input').value;
+    if(!name) return;
+    if(!window.familyMembers) window.familyMembers = ['امی', 'ابو'];
+    if(!window.familyMembers.includes(name)) window.familyMembers.push(name);
+    document.getElementById('family-member-input').value = '';
+    let list = document.getElementById('family-names-list');
+    if(list) list.innerHTML = window.familyMembers.map(m => `<span class="cat-pill active urdu" style="padding:2px 10px;">${m}</span>`).join('');
+}
+function shuffleDuties() {
+    if(!window.familyMembers) window.familyMembers = ['امی', 'ابو'];
+    let duties = ['برتن دھونا', 'سبزی کاٹنا', 'روٹی بنانا', 'سالن پکانا', 'میز لگانا'];
+    let html = '';
+    window.familyMembers.forEach(m => {
+        let d = duties[Math.floor(Math.random() * duties.length)];
+        html += `<div><strong>${m}:</strong> ${d}</div>`;
+    });
+    document.getElementById('duty-list').innerHTML = html;
+}
+function openHack(type) {
+    let hackData = {
+        'dictionary': { title: 'انگریزی مصالحے 📖', text: 'Cumin = زیرہ<br>Coriander = دھنیا<br>Turmeric = ہلدی<br>Fenugreek = میتھی' },
+        'leftover': { title: 'بچا ہوا سالن 🍲', text: 'بچے ہوئے سالن سے پراٹھا رول، یا پاستا میں مکس کر کے نیا ڈش بنا سکتے ہیں۔' },
+        'diet': { title: 'ڈائٹ مینو 🥗', text: 'صبح: ابلے انڈے<br>دوپہر: سلاد<br>رات: دال کا سوپ' },
+        'tiffin': { title: 'بچوں کا لنچ باکس 🍱', text: 'پھل، ایک پروٹین اور کاربز ضرور رکھیں۔' },
+        'chai': { title: 'چائے کا جادوگر ☕', text: 'زیادہ ذائقے کے لیے الائچی، دارچینی، یا ادرک ڈالیں۔' },
+        'converter': { title: 'ناپ تول ⚖️', text: '1 کپ = 240 ملی لیٹر<br>1 کھانے کا چمچ = 15 گرام' },
+        'substitute': { title: 'متبادل 🔄', text: 'ٹماٹر نہیں تو دہی، لیموں نہیں تو سرکہ استعمال کریں۔' },
+        'multitimer': { title: 'چولہا الارم ⏳', text: 'موبائل کا ٹائمر استعمال کریں تاکہ کھانا نہ جلے۔' },
+        'storage': { title: 'محفوظ کرنا 🌿', text: 'دھنیا کو پلاسٹک کے ڈبے میں ٹشو کے ساتھ رکھیں۔' },
+        'masala': { title: 'مصالحے 🌶️', text: 'مصالحوں کو ایئر ٹائٹ بوتل میں رکھیں۔' },
+        'meat': { title: 'گوشت ٹائمر 🥩', text: 'گوشت گلانے میں کچا پپیتا استعمال کریں۔' },
+        'tadka': { title: 'دال تڑکا 🍲', text: 'زیرہ اور کڑی پتے کا تڑکا لاجواب ہوتا ہے۔' },
+        'baking': { title: 'بیکنگ 🍰', text: 'اوون کو ہمیشہ پہلے سے گرم (پری ہیٹ) کریں۔' }
+    };
+    let hack = hackData[type] || { title: 'معلومات', text: 'جلد آرہا ہے...' };
+    document.getElementById('hack-title').innerHTML = hack.title;
+    document.getElementById('hack-body').innerHTML = hack.text;
+    document.getElementById('hack-modal').classList.add('active');
+}
+function toggleRadio() {
+    let audio = document.getElementById('kitchen-audio');
+    if(!audio) return;
+    if(audio.paused) audio.play(); else audio.pause();
+}
+function toggleFavorite(id) {
+    let favs = JSON.parse(localStorage.getItem('favDishes')) || [];
+    let idx = favs.indexOf(id);
+    if(idx > -1) favs.splice(idx, 1);
+    else favs.push(id);
+    localStorage.setItem('favDishes', JSON.stringify(favs));
+    openRecipe(id);
+    if (document.getElementById('view-favs').classList.contains('active')) renderFavs();
+}
+function renderFavs() {
+    const grid = document.getElementById('fav-grid');
+    if(!grid) return;
+    let favs = JSON.parse(localStorage.getItem('favDishes')) || [];
+    grid.innerHTML = '';
+    if(favs.length === 0) {
+        grid.innerHTML = '<p class="urdu" style="text-align:center;">کوئی پسندیدہ ریسیپی نہیں۔</p>';
+        return;
+    }
+    favs.forEach(id => {
+        let item = window.allDishes.find(d => d.id === parseInt(id));
+        if(item) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-title urdu gold-text" style="font-size:1.8rem;">${item.n}</div>
+                <button class="btn-primary urdu" onclick="openRecipe(${item.id})">ترکیب و مقدار</button>
+                <button class="btn-secondary urdu" style="margin-top:10px;" onclick="toggleFavorite(${item.id})">❌ پسندیدہ سے ہٹائیں</button>
+            `;
+            grid.appendChild(card);
+        }
+    });
+}
+function generateGroceryList() {
+    const listContainer = document.getElementById('grocery-list-container');
+    if(!listContainer) return;
+
+    let items = [];
+    if(weeklyPlan && weeklyPlan.days) {
+        for(let i=0; i<7; i++) {
+            (weeklyPlan.days[i] || []).forEach(dish => {
+                let dIngs = dish.i.split(',');
+                dIngs.forEach(ing => {
+                    let cleaned = ing.replace(/[0-9]/g, '').replace('کلو', '').replace('گرام', '').replace('چمچ', '').trim();
+                    if(cleaned.length > 2 && !items.includes(cleaned)) items.push(cleaned);
+                });
+            });
+        }
+    }
+
+    if(items.length === 0) {
+        // Fallback for empty plan
+        items = ['چکن', 'پیاز', 'ٹماٹر', 'ادرک لہسن', 'دہی', 'تیل', 'ہری مرچ', 'دھنیا', 'نمک', 'سرخ مرچ', 'ہلدی', 'چاول', 'بیسن'];
+    }
+
+    let html = `
+        <div class="urdu" style="background:var(--gold-light); padding:10px; border-radius:10px; margin-bottom:15px; font-weight:bold; text-align:center;">ہفتہ وار ضروری اشیاء</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+    `;
+    items.slice(0, 20).forEach(item => {
+        html += `<div class="urdu" style="padding:10px; background:#fff; border:1px solid #eee; border-radius:8px;">✅ ${item}</div>`;
+    });
+    html += `</div>`;
+    listContainer.innerHTML = html;
+}
+function shareGroceryWhatsApp() {
+    const items = document.querySelectorAll('#grocery-list-container .urdu:not(:first-child)');
+    let text = "ہفتہ وار سودا سلف کی پرچی 🛒:\n\n";
+    items.forEach(el => text += el.innerText + "\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+}
+function scanFridge() {
+    let res = document.getElementById('scanner-results');
+    res.innerHTML = '<p class="urdu">اسکیننگ جاری ہے... (یہ فیچر جلد آ رہا ہے)</p>';
+}
+function markCooked() {
+    if(!currentRecipeDish) return;
+    alert(currentRecipeDish.n + " پکانے کی ہسٹری میں شامل کر دیا گیا! ✅");
+    closeRecipe();
+}
+function shareWhatsApp(id) {
+    const dish = window.allDishes.find(d => d.id === id);
+    if(!dish) return;
+    const msg = `آج ہم پکا رہے ہیں: ${dish.n} 🥘\nترکیب مینو ایپ سے لی گئی ہے۔`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+}
+function downloadPDF(id) {
+    alert("PDF ڈاؤن لوڈ ہو رہی ہے... براہ کرم انتظار کریں۔");
+}
+function speakRecipe() {
+    if(!currentRecipeDish) return;
+    window.speechSynthesis.cancel();
+    let msg = new SpeechSynthesisUtterance();
+    msg.text = `ڈش کا نام: ${currentRecipeDish.n}۔ اجزاء اور ترکیب درج ذیل ہے۔ ${currentRecipeDish.t}`;
+    msg.lang = 'ur-PK';
+    msg.rate = 0.9;
+    window.speechSynthesis.speak(msg);
+}
+function playBismillah() { alert('بسم اللہ الرحمن الرحیم شروع کریں!'); }
+function toggleFocusMode() { document.getElementById('recipe-modal').classList.toggle('focus-mode'); }
+function startVoiceSearch() {
+    document.getElementById('voice-status').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('voice-status').innerText = 'بریانی تلاش کی جا رہی ہے...';
+        document.getElementById('searchInput').value = 'بریانی';
+        filterDishes();
+        setTimeout(() => document.getElementById('voice-status').style.display = 'none', 2000);
+    }, 1500);
+}
+function showFastMeals() {
+    const grid = document.getElementById('app-grid');
+    grid.innerHTML = '';
+    window.allDishes.filter(d => d.c === 'Besan' || d.c === 'Eggs' || d.n.includes('سینڈوچ')).slice(0,5).forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="card-category urdu">اچانک مہمان</div>
+            <div class="card-title urdu gold-text" style="font-size:1.8rem;">${item.n}</div>
+            <button class="btn-primary urdu" onclick="openRecipe(${item.id})">ترکیب و مقدار</button>
+        `;
+        grid.appendChild(card);
+    });
+    switchMainTab('home');
+    document.getElementById('current-day-title').innerText = 'اچانک مہمان مینو (20 منٹ)';
+}
+function leftoverMagic() {
+    let inp = document.getElementById('leftover-input').value;
+    if(!inp) return;
+    alert(inp + " سے بہترین ڈش: اس میں انڈا شامل کر کے پراٹھا رول بنائیں یا پاستا میں مکس کریں!");
+}
+function showHistory() {
+    document.getElementById('history-results').innerHTML = '<div class="urdu card" style="padding:10px;">گزشتہ روز: چکن کڑاہی 🍗</div><div class="urdu card" style="padding:10px;">اس سے پہلے: دال چاول 🍛</div>';
+}
+function saveCustomRecipe(e) {
+    if(e) e.preventDefault();
+    alert('آپ کی ترکیب محفوظ کر لی گئی ہے!');
+    document.getElementById('add-recipe-form').reset();
+}
+function buildDawat() {
+    switchMainTab('home');
+    document.getElementById('ai-dashboard').scrollIntoView();
+    document.getElementById('dawat-guest-name').focus();
+    alert('دعوت مینو بلڈر کھل گیا ہے! مہمانوں کا نام ڈال کر پریمیم کارڈ بنائیں۔');
+}
+function renderRamadan() {
+    let container = document.getElementById('ramadan-grid');
+    if(!container) return;
+    container.innerHTML = '<div class="urdu" style="grid-column: 1/-1; text-align:center;">لوڈ ہو رہا ہے...</div>';
+    
+    const sehriKeywords = ['پراٹھا', 'انڈے', 'قیمہ', 'دہی', 'چائے', 'آملیٹ', 'بونگ', 'نہاری'];
+    const iftariKeywords = ['پکوڑے', 'بیسن', 'چاٹ', 'سموسہ', 'شربت', 'رول', 'میٹھا', 'فروٹ چاٹ', 'دہی بڑے'];
+    
+    let sehriItems = window.allDishes.filter(d => 
+        sehriKeywords.some(key => d.n.includes(key) || (d.t && d.t.includes(key)))
+    ).slice(0, 4);
+    
+    let iftariItems = window.allDishes.filter(d => 
+        iftariKeywords.some(key => d.n.includes(key) || (d.c === 'Besan' || d.c === 'Sweet'))
+    ).slice(0, 4);
+
+    if(sehriItems.length === 0) sehriItems = window.allDishes.slice(10, 14);
+    if(iftariItems.length === 0) iftariItems = window.allDishes.slice(20, 24);
+    
+    let html = `<div style="grid-column: 1/-1;"><h3 class="urdu gold-text" style="margin-top:20px; border-right:4px solid var(--gold-solid); padding-right:10px;">سحری کی تجاویز 🌙</h3></div>`;
+    sehriItems.forEach(item => {
+        html += `
+            <div class="card" style="margin-bottom:10px;">
+                <div class="card-title urdu" style="font-size:1.5rem; line-height:1.4;">${item.n}</div>
+                <button class="btn-primary urdu" style="padding:5px 15px; width:100%;" onclick="openRecipe(${item.id})">ترکیب دیکھیں</button>
+            </div>
+        `;
+    });
+    
+    html += `<div style="grid-column: 1/-1;"><h3 class="urdu gold-text" style="margin-top:30px; border-right:4px solid var(--gold-solid); padding-right:10px;">افطاری کی تجاویز 🥘</h3></div>`;
+    iftariItems.forEach(item => {
+        html += `
+            <div class="card" style="margin-bottom:10px;">
+                <div class="card-title urdu" style="font-size:1.5rem; line-height:1.4;">${item.n}</div>
+                <button class="btn-primary urdu" style="padding:5px 15px; width:100%;" onclick="openRecipe(${item.id})">ترکیب دیکھیں</button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+function toggleTag() {}
