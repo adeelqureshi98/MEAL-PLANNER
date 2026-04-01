@@ -35,6 +35,7 @@
             <!-- Mobile-Optimized Category Scroll -->
             <div class="category-scroll" style="display: flex; gap: 10px; overflow-x: auto; padding: 15px 5px; margin-top: 10px; white-space: nowrap; -webkit-overflow-scrolling: touch; width: 100%; border-bottom: 1px solid var(--gold-light);">
                 <div class="cat-pill active urdu" onclick="filterByCategory('All', this)">تمام</div>
+                <div class="cat-pill urdu" onclick="filterByCategory('BBQ', this)" style="background:var(--gold-light); border-color:var(--gold-solid);">باربی کیو 🔥</div>
                 <div class="cat-pill urdu" onclick="filterByCategory('Chicken', this)">چکن</div>
                 <div class="cat-pill urdu" onclick="filterByCategory('Beef', this)">بیف</div>
                 <div class="cat-pill urdu" onclick="filterByCategory('Mutton', this)">مٹن</div>
@@ -270,6 +271,7 @@
                 <div class="urdu gold-text" style="font-weight:bold; margin-bottom:10px; font-size:1.2rem;">کیٹیگری کے مطابق دیکھیں:</div>
                 <div class="category-scroll" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:5px;">
                     <div class="cat-pill active urdu" onclick="filterByCategory('All', this)">تمام</div>
+                    <div class="cat-pill urdu" onclick="filterByCategory('BBQ', this)" style="background:var(--gold-light); border-color:var(--gold-solid);">🔥 باربی کیو</div>
                     <div class="cat-pill urdu" onclick="filterByCategory('Chicken', this)">🍗 چکن</div>
                     <div class="cat-pill urdu" onclick="filterByCategory('Beef', this)">🥩 بیف</div>
                     <div class="cat-pill urdu" onclick="filterByCategory('Mutton', this)">🥩 مٹن</div>
@@ -541,14 +543,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- PHASE 19: DAWAT CARD MODAL -->
     <div id="dawat-modal" class="modal">
-        <div class="modal-content" style="background:none; box-shadow:none;">
-            <div class="close-btn" style="color:#fff; text-align:right; margin:10px;" onclick="closeDawatModal()">&times;</div>
+        <div class="modal-content" style="background:none; box-shadow:none; max-width:500px; padding:0;">
+            <div class="close-btn" style="color:#fff; text-align:right; margin:10px; font-size:2rem; cursor:pointer;" onclick="closeDawatModal()">&times;</div>
             <div id="premium-card" class="premium-invitation-card urdu">
                 <!-- Premium Card Design Injected Here -->
             </div>
-            <div style="padding:20px; display:flex; gap:10px; justify-content:center;">
-                <button class="btn-secondary urdu" onclick="closeDawatModal()">بند کریں</button>
-                <button class="btn-primary urdu" id="whatsapp-share-btn" style="background:#25D366; border:none;">WhatsApp پر شیئر کریں ✅</button>
+            <div style="padding:20px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                <button class="btn-primary urdu" id="pdf-download-btn" style="background:#b21f1f; border:none; flex:1;" onclick="downloadDawatPDF()">PDF ڈاؤن لوڈ 📥</button>
+                <button class="btn-primary urdu" id="whatsapp-share-btn" style="background:#25D366; border:none; flex:1;">شیئر (WhatsApp) ✅</button>
             </div>
         </div>
     </div>

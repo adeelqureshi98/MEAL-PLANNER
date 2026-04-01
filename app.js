@@ -87,26 +87,50 @@ function buildDawatCard() {
     const sweet = document.getElementById('d_sweet').value || "شاہی کھیر";
     const side = "رائتہ اور تازہ سلاد";
     
+    // Save the text for WhatsApp sharing
+    window.currentDawatMessage = `اسلام علیکم! 💌\nآپ کو ہمارے ہاں کھانے پر مدعو کیا جاتا ہے۔\n\nمہمان خاص: ${guest}\n\n🍽️ مینو:\n- ${main}\n- ${sweet}\n- ${side}\n\nہمیں آپ کی آمد کا بے صبری سے انتظار رہے گا!\n- فیملی`;
+    
     const card = document.getElementById('premium-card');
     card.innerHTML = `
-        <div class="urdu dawat-title" style="font-size:2rem; color: #CFB53B; margin-bottom:15px; font-weight:bold;">دعوت نامہ</div>
-        <p class="urdu" style="font-size:1.1rem;">بڑی مسرت کے ساتھ آپ کو کھانے پر مدعو کیا جاتا ہے۔</p>
-        <div class="urdu" style="margin-top:20px; font-weight:bold; font-size:1.5rem; color:#1d1d1f;">بہت پیارے: ${guest}</div>
-        <div class="dawat-menu-box urdu" style="background:#fffdf5; padding:20px; border-radius:15px; margin:20px 0; border:2px dashed #CFB53B;">
-            <div style="font-weight:bold; color: #CFB53B; margin-bottom:10px; font-size:1.3rem;">🍽️ مینو 🍽️</div>
-            <div style="font-size:1.2rem;">• ${main}</div>
-            <div style="font-size:1.2rem;">• ${sweet}</div>
-            <div style="font-size:1.2rem;">• ${side}</div>
+        <div class="urdu dawat-title" style="font-size:2.2rem; color: #b8860b; margin-bottom:15px; font-weight:bold;">دعوتِ خاص</div>
+        <p class="urdu" style="font-size:1.2rem; color:#4a3b2c; line-height:1.8;">بڑی مسرت کے ساتھ آپ کو ہمارے ہاں کھانے پر مدعو کیا جاتا ہے۔</p>
+        <div class="urdu" style="margin-top:15px; font-weight:bold; font-size:1.6rem; color:#1d1d1f; border-bottom:1px dashed #cfb53b; display:inline-block; padding-bottom:5px;">بہت پیارے: ${guest}</div>
+        
+        <div class="dawat-menu-box urdu" style="background:rgba(255,255,255,0.7); padding:20px; border-radius:15px; margin:25px 0; border:2px dashed #b8860b; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+            <div style="font-weight:bold; color: #b8860b; margin-bottom:15px; font-size:1.5rem; text-decoration:underline;">🍽️ شاہی مینو 🍽️</div>
+            <div style="font-size:1.3rem; margin-bottom:5px;">🥘 ${main}</div>
+            <div style="font-size:1.3rem; margin-bottom:5px;">🍮 ${sweet}</div>
+            <div style="font-size:1.3rem;">🥗 ${side}</div>
         </div>
-        <p class="urdu" style="margin-top:10px; font-size:0.9rem; opacity:0.8;">آپ کی آمد ہمارے لیے خوشی کا باعث ہوگی۔</p>
+        
+        <p class="urdu" style="margin-top:15px; font-size:1rem; color:#4a3b2c; font-weight:bold;">آپ کی آمد ہمارے لیے ڈھیروں خوشیاں لائے گی۔ 🌹</p>
     `;
     
     document.getElementById('dawat-modal').classList.add('active');
     
-    const msg = encodeURIComponent(`اسلام علیکم! 💌\nآپ کو ہمارے ہاں کھانے پر مدعو کیا جاتا ہے۔\n\n🍽️ مینو:\n- ${main}\n- ${sweet}\n- ${side}\n\nمنتظر: فیملی`);
     document.getElementById('whatsapp-share-btn').onclick = () => {
-        window.open(`https://wa.me/?text=${msg}`);
+        window.open(`https://wa.me/?text=${encodeURIComponent(window.currentDawatMessage)}`);
     };
+}
+
+function downloadDawatPDF() {
+    const cardElement = document.getElementById('premium-card');
+    const opt = {
+        margin:       0.5,
+        filename:     'Dawat_Invitation.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    
+    // Change button text briefly
+    const btn = document.getElementById('pdf-download-btn');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = "ڈاؤن لوڈ ہو رہا ہے... ⏳";
+    
+    html2pdf().set(opt).from(cardElement).save().then(() => {
+        btn.innerHTML = oldText;
+    });
 }
 
 function closeDawatModal() {
@@ -154,7 +178,7 @@ function updateNutriReport() {
 }
 
 function shouldRegeneratePlan() {
-    if (!weeklyPlan || !weeklyPlan.timestamp) return true;
+    if (!weeklyPlan || !weeklyPlan.timestamp || !weeklyPlan.days) return true;
     if (Date.now() - weeklyPlan.timestamp > (7 * 24 * 60 * 60 * 1000)) return true;
     return false;
 }
@@ -178,25 +202,48 @@ function getNutritionHTML(category) {
 
 function generateWeeklyPlan(month) {
     weeklyPlan = { timestamp: Date.now(), days: {} };
-    let usedNames = new Set(); // Track unique base names across the entire week
+    let usedNames = new Set();
     let seasonDishes = window.allDishes.filter(d => d.m.includes(month));
     
-    // Fisher-Yates Shuffle for better randomness
     function shuffle(array) {
-        for (let i = array.length - 1; i > 0; i--) {
+        let copy = [...array];
+        for (let i = copy.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
+            [copy[i], copy[j]] = [copy[j], copy[i]];
         }
-        return array;
+        return copy;
     }
 
     for (let i = 0; i < 7; i++) {
         let dailySuggestions = [];
         let quotas = { protein: 2, vitamins: 2, carbs: 1, fiber: 1 };
-        let shuffled = shuffle([...seasonDishes]);
         
+        // Refresh shuffled list for each day
+        let shuffled = shuffle(seasonDishes);
+        
+        // Friday Special: Pulao / Biryani (Rice Category)
+        if (i === 4) {
+            quotas.carbs = 2; // More focus on rice/carbs
+            let fridaySpecials = shuffled.filter(d => d.n.includes('بریانی') || d.n.includes('پلاؤ') || d.c === 'Rice');
+            if(fridaySpecials.length > 0) {
+                dailySuggestions.push(fridaySpecials[0]);
+                usedNames.add(fridaySpecials[0].n);
+            }
+        }
+        
+        // Sunday Special: Heavy Meat (Beef/Mutton/Nihari)
+        if (i === 6) {
+            quotas.protein = 3; 
+            let sundaySpecials = shuffled.filter(d => d.c === 'Beef' || d.c === 'Mutton' || d.n.includes('نہاری') || d.n.includes('پائے'));
+            if(sundaySpecials.length > 0) {
+                dailySuggestions.push(sundaySpecials[0]);
+                usedNames.add(sundaySpecials[0].n);
+            }
+        }
+
         for (let dish of shuffled) {
-            let baseName = dish.n.split(' (')[0].trim(); // Extract base name to avoid duplicates like "Dish (18)"
+            if (dailySuggestions.length >= 6) break;
+            let baseName = dish.n;
             if (usedNames.has(baseName)) continue;
 
             let type = getNutriCategory(dish.c);
@@ -207,26 +254,16 @@ function generateWeeklyPlan(month) {
             }
         }
 
-        // Fill remaining slots if needed (up to 6)
+        // Fill remaining slots
         if (dailySuggestions.length < 6) {
-            let backup = shuffle([...window.allDishes]);
+            let backup = shuffle(window.allDishes);
             for (let dish of backup) {
-                let baseName = dish.n.split(' (')[0].trim();
-                if (!dailySuggestions.find(d => d.id === dish.id) && !usedNames.has(baseName) && dailySuggestions.length < 6) {
+                if (dailySuggestions.length >= 6) break;
+                if (!usedNames.has(dish.n)) {
                     dailySuggestions.push(dish);
-                    usedNames.add(baseName);
+                    usedNames.add(dish.n);
                 }
             }
-        }
-        
-        // If still less than 6 (unlikely with 500+ dishes), allow some reuse if absolutely necessary, but try to avoid
-        if (dailySuggestions.length < 6) {
-             let backup = shuffle([...window.allDishes]);
-             for (let dish of backup) {
-                if (!dailySuggestions.find(d => d.id === dish.id) && dailySuggestions.length < 6) {
-                    dailySuggestions.push(dish);
-                }
-             }
         }
 
         weeklyPlan.days[i] = shuffle(dailySuggestions);
@@ -330,7 +367,7 @@ function getCostAndCalories(category, members) {
     return { cost: 500 * members, cals: 300 };
 }
 
-window.urduTags = {'Chicken':'🍗 چکن','Beef':'🥩 بیف','Mutton':'🥩 مٹن','Sabzi':'🥦 سبزی','Daal':'🍲 دال','Rice':'🍚 چاول','Sweet':'🍮 میٹھا','Besan':'🧆 بیسن'};
+window.urduTags = {'Chicken':'🍗 چکن','Beef':'🥩 بیف','Mutton':'🥩 مٹن','Sabzi':'🥦 سبزی','Daal':'🍲 دال','Rice':'🍚 چاول','Sweet':'🍮 میٹھا','Besan':'🧆 بیسن','BBQ':'🔥 باربی کیو'};
 
 document.addEventListener('DOMContentLoaded', initApp);
 function closeRecipe() { document.getElementById('recipe-modal').classList.remove('active'); }
@@ -407,8 +444,6 @@ function filterDishes() {
         grid.appendChild(card);
     });
 }
-function shareWhatsApp(id) {}
-function downloadPDF(id) {}
 function askBhai() {
     let q = document.getElementById('bhai-input').value;
     if(!q) return;
@@ -598,6 +633,79 @@ function shareWhatsApp(id) {
 function downloadPDF(id) {
     alert("PDF ڈاؤن لوڈ ہو رہی ہے... براہ کرم انتظار کریں۔");
 }
+window.shareDawatPlanWhatsApp = function(guests, main, rice, sweet) {
+    let msg = `*${guests} افراد کی دعوت کا مینو اور پرچی* 🍽️\n\n`;
+    msg += `🥘 *مین*: ${main}\n`;
+    msg += `🍚 *چاول*: ${rice}\n`;
+    msg += `🍮 *میٹھا*: ${sweet}\n\n`;
+    msg += `یہ پلان AI Meal Planner ایپ سے بنایا گیا ہے!`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+};
+
+function buildDawat() {
+    let guests = parseInt(document.getElementById('dawat-guests').value) || 15;
+    if (guests < 5) guests = 5;
+    
+    // Pick Dawat-worthy Dishes
+    let dawatMains = window.allDishes.filter(d => d.c === 'Beef' || d.c === 'Mutton' || d.n.includes('کڑاہی') || d.n.includes('قورمہ'));
+    let dawatRice = window.allDishes.filter(d => d.n.includes('بریانی') || d.n.includes('پلاؤ'));
+    let dawatSweet = window.allDishes.filter(d => d.c === 'Sweet');
+    let dawatBbq = window.allDishes.filter(d => d.c === 'BBQ');
+    
+    let main = dawatMains.length > 0 ? dawatMains[Math.floor(Math.random() * dawatMains.length)] : {n: 'چکن قورمہ'};
+    let rice = dawatRice.length > 0 ? dawatRice[Math.floor(Math.random() * dawatRice.length)] : {n: 'چکن بریانی'};
+    let sweet = dawatSweet.length > 0 ? dawatSweet[Math.floor(Math.random() * dawatSweet.length)] : {n: 'کھیر'};
+    let bbq = dawatBbq.length > 0 ? dawatBbq[Math.floor(Math.random() * dawatBbq.length)] : {n: 'چکن تکہ'};
+    let side = 'تازہ سلاد، پودینے کی چٹنی، اور نان/روٹی';
+
+    // Quantity Calculations based on Guests
+    let meatKg = (guests / 4.5).toFixed(1);
+    let bbqMeatKg = (guests / 5).toFixed(1);
+    let riceKg = (guests / 6).toFixed(1); 
+    let sweetMilk = (guests / 5).toFixed(1);
+    let naan = Math.ceil(guests * 1.5);
+    let drinkLiters = (guests / 3).toFixed(1);
+
+    let html = `
+        <div style="background:#fffdf5; padding:15px; border-radius:10px; border:2px dashed var(--gold-solid); text-align:right;">
+            <h3 class="gold-text" style="text-align:center; margin-bottom:15px;">🍽️ ${guests} افراد کا مکمل دعوت پلان 🍽️</h3>
+            
+            <div style="margin-bottom:15px;">
+                <strong>1️⃣ مین ڈش (گوشت):</strong> ${main.n}<br>
+                <span style="color:#666; font-size:0.9rem;">⚗️ مقدار: تقریباً ${meatKg} کلو گوشت لگے گا۔</span>
+            </div>
+            
+            <div style="margin-bottom:15px;">
+                <strong>2️⃣ چاول کی ڈش:</strong> ${rice.n}<br>
+                <span style="color:#666; font-size:0.9rem;">⚗️ مقدار: تقریباً ${riceKg} کلو چاول درکار ہوں گے۔</span>
+            </div>
+            
+            <div style="margin-bottom:15px;">
+                <strong>3️⃣ باربی کیو اسپیشل:</strong> ${bbq.n}<br>
+                <span style="color:#666; font-size:0.9rem;">⚗️ مقدار: تقریباً ${bbqMeatKg} کلو گوشت (BBQ کے لیے)۔</span>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <strong>4️⃣ میٹھا (سویٹ):</strong> ${sweet.n}<br>
+                 <span style="color:#666; font-size:0.9rem;">⚗️ مقدار: تقریباً ${sweetMilk} لیٹر دودھ (یا مساوی اجزاء) درکار ہوں گے۔</span>
+            </div>
+            
+            <div style="margin-bottom:15px;">
+                <strong>5️⃣ لوازمات (سائیڈز):</strong> ${side}<br>
+                <span style="color:#666; font-size:0.9rem;">⚗️ مقدار: روٹی/نان تقریباً ${naan} عدد، اور کولڈ ڈرنک ${drinkLiters} لیٹر۔</span>
+            </div>
+            
+            <div style="margin-top:20px; text-align:center; padding-top:10px; border-top:1px solid #ccc;">
+                <button class="btn-primary urdu" style="background:#25D366; border:none; width:100%;" onclick="shareDawatPlanWhatsApp('${guests}', '${main.n}', '${rice.n}', '${sweet.n} + ${bbq.n}')">پرچی واٹس ایپ کریں ✅</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('hack-title').innerHTML = "پریمیم دعوت پلاننگ";
+    document.getElementById('hack-body').innerHTML = html;
+    document.getElementById('hack-modal').classList.add('active');
+}
+
 function speakRecipe() {
     if(!currentRecipeDish) return;
     window.speechSynthesis.cancel();
@@ -805,12 +913,6 @@ function saveCustomRecipe(e) {
     if(e) e.preventDefault();
     alert('آپ کی ترکیب محفوظ کر لی گئی ہے!');
     document.getElementById('add-recipe-form').reset();
-}
-function buildDawat() {
-    switchMainTab('home');
-    document.getElementById('ai-dashboard').scrollIntoView();
-    document.getElementById('dawat-guest-name').focus();
-    alert('دعوت مینو بلڈر کھل گیا ہے! مہمانوں کا نام ڈال کر پریمیم کارڈ بنائیں۔');
 }
 function renderRamadan() {
     let container = document.getElementById('ramadan-grid');

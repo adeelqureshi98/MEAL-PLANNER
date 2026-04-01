@@ -211,10 +211,12 @@ header {
 .day-title { font-size: 2rem; }
 .sub-text { font-size: 1rem; color: var(--text-secondary); }
 
-.category-scroll::-webkit-scrollbar { height: 4px; }
-.category-scroll::-webkit-scrollbar-thumb { background: var(--gold-light); border-radius: 10px; }
-.category-scroll { -webkit-overflow-scrolling: touch; }
+.category-scroll::-webkit-scrollbar { height: 6px; display: block; }
+.category-scroll::-webkit-scrollbar-thumb { background: rgba(207, 181, 59, 0.5); border-radius: 10px; }
+.category-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.02); }
+.category-scroll { -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .cat-pill {
+    scroll-snap-align: start;
     padding: 0.6rem 1.2rem;
     background: var(--card-white);
     border: 1px solid var(--border-subtle);
@@ -466,25 +468,28 @@ button {
 }
 .radio-active { animation: radioPulse 2s infinite; color: var(--gold-solid) !important; }
 
-/* --- PREMIUM INVITATION CARD --- */
+/* --- PREMIUM INVITATION CARD VIP STYLE --- */
 .premium-invitation-card {
     background: #fffdf5;
-    border: 15px solid transparent;
-    border-image: var(--gold-metallic) 1;
-    padding: 3rem 2rem;
+    background-image: radial-gradient(circle at top right, rgba(207,181,59,0.15), transparent 60%), radial-gradient(circle at bottom left, rgba(207,181,59,0.15), transparent 60%);
+    border: 8px double var(--gold-solid);
+    border-radius: 10px;
+    padding: 3rem 1.5rem;
     text-align: center;
     position: relative;
-    box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     max-width: 450px;
     margin: 0 auto;
-    color: #333;
+    color: #4a3b2c;
+    font-family: 'Noto Nastaliq Urdu', serif;
 }
 .premium-invitation-card::before {
     content: "﷽";
     display: block;
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
+    font-size: 2.8rem;
+    margin-bottom: 15px;
     color: var(--gold-solid);
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
 }
 .dawat-title {
     font-size: 2.2rem;
