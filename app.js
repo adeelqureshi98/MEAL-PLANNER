@@ -109,7 +109,7 @@ function buildDawatCard() {
     document.getElementById('dawat-modal').classList.add('active');
     
     document.getElementById('whatsapp-share-btn').onclick = () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(window.currentDawatMessage)}`);
+        window.location.href = `https://wa.me/?text=${encodeURIComponent(window.currentDawatMessage)}`;
     };
 }
 
@@ -637,9 +637,9 @@ window.shareDawatPlanWhatsApp = function(guests, main, rice, sweet) {
     let msg = `*${guests} افراد کی دعوت کا مینو اور پرچی* 🍽️\n\n`;
     msg += `🥘 *مین*: ${main}\n`;
     msg += `🍚 *چاول*: ${rice}\n`;
-    msg += `🍮 *میٹھا*: ${sweet}\n\n`;
+    msg += `🍮 *میٹھا/باربی کیو*: ${sweet}\n\n`;
     msg += `یہ پلان AI Meal Planner ایپ سے بنایا گیا ہے!`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+    window.location.href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
 };
 
 function buildDawat() {
